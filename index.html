@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pluto's World</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Trebuchet+MS&display=swap');
+    :root {
+      --xbg: #0d0010; --xpanel: #1a0022; --xborder: #cc00ff; --xborder2: #ff66ff;
+      --xpink: #ff33cc; --xcyan: #00ffee; --xtext: #f0e0ff; --xmuted: #bb88cc;
+      --xlink: #ff66ff; --xentry-bg: #120018; --xsidebar-bg: #160020; --xhdr: #260030; --xaccent: #9900cc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--xbg); color: var(--xtext); font-family: 'Trebuchet MS', Verdana, sans-serif; font-size: 13px; min-height: 100vh; }
+    #app { max-width: 820px; margin: 0 auto; padding: 8px; }
+
+    /* login overlay */
+    .login-overlay { position: fixed; inset: 0; background: rgba(5,0,15,0.93); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+    .login-overlay.hidden { display: none; }
+    .login-box { background: #160020; border: 1px solid var(--xborder); padding: 28px 28px 22px; width: 300px; text-align: center; }
+    .login-title { color: var(--xpink); font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+    .login-sub { color: var(--xmuted); font-size: 11px; margin-bottom: 18px; font-style: italic; }
+    .login-field { width: 100%; background: #0a0012; border: 1px solid var(--xborder); color: var(--xtext); padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none; margin-bottom: 10px; text-align: center; letter-spacing: 2px; }
+    .login-field:focus { border-color: var(--xpink); }
+    .login-btn { background: var(--xpink); color: #fff; border: none; padding: 7px 0; font-size: 13px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 8px; }
+    .login-btn:hover { background: #ff55dd; }
+    .login-err { color: #ff6666; font-size: 11px; min-height: 16px; margin-bottom: 6px; }
+    .login-visitor { color: var(--xmuted); font-size: 10px; cursor: pointer; background: none; border: none; padding: 0; }
+    .login-visitor:hover { color: var(--xpink); text-decoration: underline; }
+
+    /* banner */
+    .top-banner { background: linear-gradient(135deg, #260030 0%, #0d0010 40%, #1a002a 100%); border: 1px solid var(--xborder); border-bottom: 2px solid var(--xpink); padding: 14px 18px 10px; margin-bottom: 8px; position: relative; overflow: hidden; display: flex; align-items: flex-start; justify-content: space-between; }
+    .top-banner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(204,0,255,0.03) 10px, rgba(204,0,255,0.03) 11px); pointer-events: none; }
+    .banner-left { position: relative; }
+    .site-name { font-size: 26px; font-weight: bold; color: var(--xpink); text-shadow: 0 0 8px rgba(255,51,204,0.5); letter-spacing: 1px; }
+    .site-subtitle { color: var(--xmuted); font-size: 11px; margin-top: 2px; font-style: italic; }
+    .banner-right { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .admin-badge { background: var(--xpink); color: #fff; font-size: 9px; padding: 2px 7px; letter-spacing: 0.5px; }
+    .top-btn { color: var(--xmuted); font-size: 10px; cursor: pointer; background: none; border: 1px solid rgba(204,0,255,0.3); padding: 3px 8px; }
+    .top-btn:hover { color: var(--xpink); border-color: var(--xpink); }
+
+    .marquee-bar { background: var(--xaccent); color: #ffccff; font-size: 11px; padding: 3px 0; overflow: hidden; margin-bottom: 8px; }
+    .marquee-inner { display: inline-block; white-space: nowrap; animation: marquee 18s linear infinite; }
+    @keyframes marquee { from { transform: translateX(100vw); } to { transform: translateX(-100%); } }
+
+    .layout { display: grid; grid-template-columns: 168px 1fr; gap: 8px; }
+    .sidebar { display: flex; flex-direction: column; gap: 6px; }
+    .side-box { background: var(--xsidebar-bg); border: 1px solid var(--xborder); font-size: 12px; }
+    .side-box-hdr { background: var(--xaccent); color: #ffccff; font-size: 11px; font-weight: bold; padding: 3px 7px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .side-box-body { padding: 7px 8px; }
+    .avatar-wrap { text-align: center; margin-bottom: 7px; }
+    .avatar { width: 72px; height: 72px; border-radius: 4px; border: 2px solid var(--xpink); background: #2a0035; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-size: 28px; position: relative; overflow: hidden; }
+    .avatar.editable { cursor: pointer; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
+    .avatar-name { color: var(--xpink); font-weight: bold; font-size: 13px; }
+    .avatar-sub { color: var(--xmuted); font-size: 10px; }
+    .side-stat { display: flex; justify-content: space-between; color: var(--xmuted); font-size: 11px; padding: 1px 0; }
+    .side-stat span:last-child { color: var(--xcyan); font-weight: bold; }
+    .mood-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--xmuted); margin: 2px 0; }
+    .mood-emoji { font-size: 14px; }
+    .music-row { font-size: 11px; color: var(--xmuted); margin-top: 4px; }
+    .music-row .track { color: var(--xcyan); font-size: 11px; margin-top: 1px; }
+    .links-list { list-style: none; }
+    .links-list li { padding: 2px 0; border-bottom: 1px dashed rgba(204,0,255,0.2); }
+    .links-list li:last-child { border: none; }
+    .links-list a { color: var(--xlink); text-decoration: none; font-size: 11px; }
+    .links-list a:hover { text-decoration: underline; color: var(--xpink); }
+    .about-text { color: var(--xtext); font-size: 11px; line-height: 1.5; }
+
+    .main-col { display: flex; flex-direction: column; gap: 0; }
+    .new-entry-btn { background: var(--xaccent); color: #ffccff; border: 1px solid var(--xborder2); padding: 6px 14px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; width: 100%; text-align: left; letter-spacing: 0.5px; transition: background 0.15s; }
+    .new-entry-btn:hover { background: var(--xpink); }
+
+    .compose-box { background: var(--xpanel); border: 1px solid var(--xpink); padding: 10px; margin-bottom: 8px; display: none; }
+    .compose-box.open { display: block; }
+    .compose-title { color: var(--xpink); font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+    .field-row { margin-bottom: 7px; }
+    .field-row label { display: block; color: var(--xmuted); font-size: 11px; margin-bottom: 2px; }
+    .field-row input, .field-row textarea, .field-row select { width: 100%; background: #0a0012; border: 1px solid var(--xborder); color: var(--xtext); padding: 5px 7px; font-size: 12px; font-family: inherit; outline: none; }
+    .field-row input:focus, .field-row textarea:focus { border-color: var(--xpink); }
+    .field-row textarea { min-height: 80px; resize: vertical; }
+    .inline-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .btn-row { display: flex; gap: 7px; margin-top: 8px; }
+    .btn-post { background: var(--xpink); color: #fff; border: none; padding: 6px 16px; font-size: 12px; font-weight: bold; cursor: pointer; }
+    .btn-post:hover { background: #ff55dd; }
+    .btn-cancel { background: transparent; color: var(--xmuted); border: 1px solid var(--xmuted); padding: 6px 12px; font-size: 12px; cursor: pointer; }
+    .btn-cancel:hover { color: var(--xtext); border-color: var(--xtext); }
+
+    .entry { background: var(--xentry-bg); border: 1px solid rgba(204,0,255,0.35); border-left: 3px solid var(--xborder); margin-bottom: 8px; transition: border-color 0.2s; }
+    .entry:hover { border-color: var(--xpink); border-left-color: var(--xpink); }
+    .entry-hdr { background: var(--xhdr); padding: 5px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(204,0,255,0.3); }
+    .entry-title { color: var(--xpink); font-size: 13px; font-weight: bold; }
+    .entry-date { color: var(--xmuted); font-size: 11px; }
+    .entry-body { padding: 9px 11px; color: var(--xtext); line-height: 1.6; font-size: 13px; white-space: pre-wrap; }
+    .entry-meta { padding: 4px 11px; border-top: 1px dashed rgba(204,0,255,0.2); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .meta-item { color: var(--xmuted); font-size: 11px; display: flex; align-items: center; gap: 3px; }
+    .meta-item .val { color: var(--xcyan); }
+    .entry-footer { padding: 5px 11px; border-top: 1px solid rgba(204,0,255,0.2); display: flex; align-items: center; gap: 10px; }
+    .heart-btn { background: transparent; border: 1px solid var(--xpink); color: var(--xpink); font-size: 13px; padding: 2px 9px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 4px; line-height: 1; }
+    .heart-btn:hover { background: rgba(255,51,204,0.15); }
+    .heart-btn.given { color: #ff6ec7; border-color: #ff6ec7; }
+    .heart-btn.given .heart-icon { animation: heartpop 0.25s ease; }
+    @keyframes heartpop { 0%{transform:scale(1)} 50%{transform:scale(1.5)} 100%{transform:scale(1)} }
+    .heart-count { color: var(--xpink); font-size: 12px; font-weight: bold; }
+    .audio-player { margin-top: 6px; }
+    .audio-upload-btn { background: transparent; border: 1px dashed rgba(204,0,255,0.4); color: var(--xmuted); font-size: 10px; padding: 3px 7px; cursor: pointer; width: 100%; text-align: center; margin-top: 4px; }
+    .audio-upload-btn:hover { border-color: var(--xpink); color: var(--xpink); }
+    .audio-player audio { width: 100%; margin-top: 4px; filter: hue-rotate(270deg) saturate(2); height: 24px; }
+    .now-playing { color: var(--xcyan); font-size: 10px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .comment-toggle { color: var(--xlink); font-size: 11px; cursor: pointer; background: none; border: none; padding: 0; }
+    .comment-toggle:hover { text-decoration: underline; color: var(--xpink); }
+    .delete-btn { color: #993355; font-size: 11px; cursor: pointer; background: none; border: none; padding: 0; margin-left: auto; opacity: 0.6; }
+    .delete-btn:hover { opacity: 1; color: var(--xpink); }
+    .comments-section { padding: 8px 11px; border-top: 1px solid rgba(204,0,255,0.2); display: none; }
+    .comments-section.open { display: block; }
+    .comment-item { border-bottom: 1px dashed rgba(204,0,255,0.15); padding: 5px 0; font-size: 12px; }
+    .comment-item:last-child { border: none; }
+    .comment-author { color: var(--xpink); font-weight: bold; font-size: 11px; }
+    .comment-time { color: var(--xmuted); font-size: 10px; }
+    .comment-text { color: var(--xtext); margin-top: 2px; line-height: 1.5; }
+    .comment-form { display: flex; flex-direction: column; gap: 5px; margin-top: 7px; }
+    .comment-form input, .comment-form textarea { background: #0a0012; border: 1px solid rgba(204,0,255,0.4); color: var(--xtext); padding: 4px 7px; font-size: 12px; font-family: inherit; outline: none; }
+    .comment-form input:focus, .comment-form textarea:focus { border-color: var(--xpink); }
+    .comment-form textarea { min-height: 50px; resize: none; }
+    .comment-submit { background: var(--xaccent); color: #ffccff; border: none; padding: 4px 12px; font-size: 11px; cursor: pointer; width: fit-content; }
+    .comment-submit:hover { background: var(--xpink); }
+    .no-comments { color: var(--xmuted); font-size: 11px; font-style: italic; }
+    .entry-images { padding: 0 11px 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .entry-img { max-width: 100%; max-height: 320px; border: 1px solid rgba(204,0,255,0.3); cursor: pointer; display: block; }
+    .entry-links { padding: 4px 11px 7px; display: flex; flex-direction: column; gap: 3px; }
+    .entry-link { color: var(--xcyan); font-size: 12px; text-decoration: none; word-break: break-all; }
+    .entry-link::before { content: '🔗 '; font-size: 11px; }
+    .entry-link:hover { color: var(--xpink); text-decoration: underline; }
+    .media-toolbar { display: flex; gap: 6px; margin-bottom: 7px; }
+    .media-btn { background: transparent; border: 1px dashed rgba(204,0,255,0.5); color: var(--xmuted); font-size: 11px; padding: 4px 10px; cursor: pointer; flex: 1; text-align: center; }
+    .media-btn:hover { border-color: var(--xpink); color: var(--xpink); }
+    .img-preview-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; }
+    .img-preview { position: relative; display: inline-block; }
+    .img-preview img { width: 80px; height: 60px; object-fit: cover; border: 1px solid rgba(204,0,255,0.4); display: block; }
+    .img-preview-rm { position: absolute; top: -5px; right: -5px; background: var(--xpink); color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .link-row { display: flex; gap: 5px; align-items: center; margin-bottom: 4px; }
+    .link-row input { flex: 1; background: #0a0012; border: 1px solid var(--xborder); color: var(--xtext); padding: 4px 7px; font-size: 11px; font-family: inherit; outline: none; }
+    .link-row input:focus { border-color: var(--xpink); }
+    .link-rm { background: none; border: none; color: #993355; cursor: pointer; font-size: 13px; padding: 0 4px; }
+    .link-rm:hover { color: var(--xpink); }
+    .add-link-btn { background: none; border: none; color: var(--xmuted); font-size: 11px; cursor: pointer; padding: 0; margin-bottom: 7px; }
+    .add-link-btn:hover { color: var(--xpink); }
+    .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+    .lightbox img { max-width: 90vw; max-height: 90vh; border: 1px solid rgba(204,0,255,0.5); }
+    .empty-state { color: var(--xmuted); font-size: 12px; text-align: center; padding: 30px 10px; font-style: italic; border: 1px dashed rgba(204,0,255,0.2); }
+    .footer-bar { text-align: center; color: rgba(204,0,255,0.4); font-size: 10px; padding: 10px 0 4px; border-top: 1px solid rgba(204,0,255,0.2); margin-top: 10px; }
+    .xo { color: var(--xpink); }
+
+    .profile-edit-form { display: none; flex-direction: column; gap: 5px; margin-top: 6px; }
+    .profile-edit-form.open { display: flex; }
+    .profile-edit-form input, .profile-edit-form textarea { background: #0a0012; border: 1px solid rgba(204,0,255,0.4); color: var(--xtext); padding: 4px 6px; font-size: 11px; font-family: inherit; outline: none; width: 100%; }
+    .profile-edit-form textarea { min-height: 50px; resize: none; font-size: 11px; }
+    .profile-save { background: var(--xaccent); color: #ffccff; border: none; padding: 3px 10px; font-size: 11px; cursor: pointer; margin-top: 2px; }
+    .edit-link { color: var(--xmuted); font-size: 10px; cursor: pointer; text-align: center; display: none; margin-top: 4px; }
+    .edit-link:hover { color: var(--xpink); }
+
+    .change-pw-box { background: var(--xpanel); border: 1px solid rgba(204,0,255,0.4); padding: 10px; margin-top: 6px; display: none; }
+    .change-pw-box.open { display: block; }
+    .change-pw-box input { width: 100%; background: #0a0012; border: 1px solid var(--xborder); color: var(--xtext); padding: 4px 7px; font-size: 11px; font-family: inherit; outline: none; margin-bottom: 5px; }
+    .change-pw-box input:focus { border-color: var(--xpink); }
+    .change-pw-save { background: var(--xaccent); color: #ffccff; border: none; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+    .change-pw-msg { font-size: 10px; margin-top: 4px; min-height: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- login overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-title">✦ Pluto's World ✦</div>
+    <div class="login-sub" id="loginSub">enter your password</div>
+    <input class="login-field" type="password" id="loginPw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    <div class="login-err" id="loginErr"></div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">sign in</button>
+    <button class="login-visitor" onclick="enterAsVisitor()">just visiting →</button>
+  </div>
+</div>
+
+<canvas id="glitter" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></canvas>
+
+<div id="app">
+  <div class="top-banner">
+    <div class="banner-left">
+      <div class="site-name" id="siteName">✦ Pluto's World ✦</div>
+      <div class="site-subtitle" id="siteSubtitle">thoughts from the void</div>
+    </div>
+    <div class="banner-right" id="bannerRight">
+      <!-- filled by applyAdminState() -->
+    </div>
+  </div>
+
+  <div class="marquee-bar">
+    <div class="marquee-inner" id="marqueeText">★ welcome to pluto's world ★ please leave comments ★ you know who you are ★ </div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="side-box">
+        <div class="side-box-hdr">profile</div>
+        <div class="side-box-body">
+          <div class="avatar-wrap">
+            <div class="avatar" id="avatarEl">
+              <span id="avatarEmoji">🌙</span>
+              <img id="avatarImg" style="display:none;position:absolute;top:0;left:0;" />
+            </div>
+            <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarChange(event)">
+            <div class="avatar-name" id="profileName">pluto</div>
+            <div class="avatar-sub" id="profileLoc">somewhere ✦ usa</div>
+          </div>
+          <div class="side-stat"><span>hearts given:</span><span id="heartsGivenCount">0</span></div>
+          <div class="side-stat"><span>total entries:</span><span id="totalEntries">0</span></div>
+          <span class="edit-link" id="editProfileLink" onclick="toggleProfileEdit()">✎ edit profile</span>
+          <div class="profile-edit-form" id="profileEditForm">
+            <input id="pe_name" placeholder="display name" />
+            <input id="pe_loc" placeholder="location" />
+            <input id="pe_sitename" placeholder="site name" />
+            <input id="pe_subtitle" placeholder="site subtitle" />
+            <input id="pe_marquee" placeholder="marquee text" />
+            <input id="pe_mood" placeholder="current mood" />
+            <input id="pe_moodEmoji" placeholder="mood emoji" />
+            <input id="pe_music" placeholder="currently listening to" />
+            <textarea id="pe_about" placeholder="about me"></textarea>
+            <button class="profile-save" onclick="saveProfile()">save</button>
+          </div>
+          <span class="edit-link" id="changePwLink" onclick="toggleChangePw()" style="margin-top:2px;">🔑 change password</span>
+          <div class="change-pw-box" id="changePwBox">
+            <input type="password" id="cpw_cur" placeholder="current password" />
+            <input type="password" id="cpw_new" placeholder="new password" />
+            <input type="password" id="cpw_con" placeholder="confirm new password" />
+            <button class="change-pw-save" onclick="changePassword()">update</button>
+            <div class="change-pw-msg" id="changePwMsg"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-box">
+        <div class="side-box-hdr">status</div>
+        <div class="side-box-body">
+          <div class="mood-row">
+            <span>mood:</span>
+            <span class="mood-emoji" id="moodEmoji">😌</span>
+            <span id="moodText" style="color:var(--xcyan);">content</span>
+          </div>
+          <div class="music-row">
+            <span>♫ listening:</span>
+            <div class="track" id="musicText">Dashboard Confessional</div>
+          </div>
+          <div class="audio-player">
+            <audio id="sidebarAudio" controls style="display:none"></audio>
+            <div class="now-playing" id="nowPlayingName" style="display:none"></div>
+            <button class="audio-upload-btn" id="audioUploadBtn" style="display:none" onclick="document.getElementById('audioInput').click()">♫ upload song</button>
+            <input type="file" id="audioInput" accept="audio/*" style="display:none" onchange="handleAudioUpload(event)">
+          </div>
+        </div>
+      </div>
+
+      <div class="side-box">
+        <div class="side-box-hdr">about me</div>
+        <div class="side-box-body">
+          <div class="about-text" id="aboutText">just a girl figuring it all out. i like rainy days, long drives, and talking to strangers on the internet. ✨</div>
+        </div>
+      </div>
+
+      <div class="side-box">
+        <div class="side-box-hdr">my links</div>
+        <div class="side-box-body">
+          <ul class="links-list">
+            <li><a href="#">my deviantart</a></li>
+            <li><a href="#">bestie's blog</a></li>
+            <li><a href="#">my photobucket</a></li>
+            <li><a href="#">aim profile</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-col">
+      <button class="new-entry-btn" id="newEntryBtn" style="display:none" onclick="toggleCompose()">+ new entry</button>
+      <div class="compose-box" id="composeBox">
+        <div class="compose-title">new journal entry</div>
+        <div class="field-row"><label>entry title</label><input id="entryTitle" placeholder="give it a title..." /></div>
+        <div class="field-row"><label>what's on your mind?</label><textarea id="entryBody" placeholder="dear diary..."></textarea></div>
+        <div class="media-toolbar">
+          <button class="media-btn" onclick="document.getElementById('entryImgInput').click()">📷 add photo</button>
+          <button class="media-btn" onclick="addLinkField()">🔗 add link</button>
+        </div>
+        <input type="file" id="entryImgInput" accept="image/*" multiple style="display:none" onchange="handleEntryImages(event)">
+        <div class="img-preview-wrap" id="imgPreviewWrap"></div>
+        <div id="linkFields"></div>
+        <div class="inline-fields">
+          <div class="field-row">
+            <label>mood</label>
+            <select id="entryMood">
+              <option value="😊 happy">😊 happy</option>
+              <option value="😔 sad">😔 sad</option>
+              <option value="😤 frustrated">😤 frustrated</option>
+              <option value="🥰 loved">🥰 loved</option>
+              <option value="😴 tired">😴 tired</option>
+              <option value="😌 content">😌 content</option>
+              <option value="😒 bored">😒 bored</option>
+              <option value="😭 crying">😭 crying</option>
+              <option value="🤩 excited">🤩 excited</option>
+              <option value="😐 meh">😐 meh</option>
+              <option value="💀 dead inside">💀 dead inside</option>
+              <option value="✨ vibing">✨ vibing</option>
+              <option value="😰 anxious">😰 anxious</option>
+              <option value="🥺 soft">🥺 soft</option>
+              <option value="😏 smug">😏 smug</option>
+              <option value="🤔 thoughtful">🤔 thoughtful</option>
+              <option value="😶 numb">😶 numb</option>
+              <option value="🌧️ melancholy">🌧️ melancholy</option>
+              <option value="☁️ blah">☁️ blah</option>
+              <option value="🔥 passionate">🔥 passionate</option>
+              <option value="🥶 cold">🥶 cold</option>
+              <option value="💭 nostalgic">💭 nostalgic</option>
+              <option value="🫠 overwhelmed">🫠 overwhelmed</option>
+              <option value="😇 grateful">😇 grateful</option>
+              <option value="😈 devious">😈 devious</option>
+              <option value="🌙 dreamy">🌙 dreamy</option>
+              <option value="⚡ restless">⚡ restless</option>
+              <option value="🫶 hopeful">🫶 hopeful</option>
+              <option value="🤡 clownish">🤡 clownish</option>
+              <option value="💫 spacey">💫 spacey</option>
+            </select>
+          </div>
+          <div class="field-row"><label>currently listening to</label><input id="entryMusic" placeholder="song - artist" /></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-post" onclick="postEntry()">post entry</button>
+          <button class="btn-cancel" onclick="toggleCompose()">cancel</button>
+        </div>
+      </div>
+      <div id="entriesList"></div>
+    </div>
+  </div>
+
+  <div class="footer-bar"><span class="xo">xo</span> pluto's world &bull; &copy; 2025 &bull; <span class="xo">xo</span></div>
+</div>
+
+<script>
+  let isLoggedIn = false;
+  let posts = JSON.parse(localStorage.getItem('pw_posts') || '[]');
+  let profile = Object.assign({
+    name:'pluto', loc:'somewhere ✦ usa', siteName:"✦ Pluto's World ✦", subtitle:'thoughts from the void',
+    marquee:"★ welcome to pluto's world ★ please leave comments ★ you know who you are ★ ",
+    mood:'content', moodEmoji:'😌', music:'Dashboard Confessional',
+    about:"just a girl figuring it all out. i like rainy days, long drives, and talking to strangers on the internet. ✨",
+    heartsGiven:0, subscriptions:0, avatarSrc:''
+  }, JSON.parse(localStorage.getItem('pw_profile') || '{}'));
+  let commentStates = {};
+
+  // ── auth ─────────────────────────────────────────────────────
+  async function hash(pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  const DEFAULT_HASH = '339319de11cc80f80baa79065f9dc62ad6bf16fb39768f701914296458099254';
+
+  async function initAuth() {
+    if (!localStorage.getItem('pw_hash')) {
+      localStorage.setItem('pw_hash', DEFAULT_HASH);
+    }
+    if (sessionStorage.getItem('pw_session') === 'active') {
+      loginSuccess(false);
+    } else {
+      document.getElementById('loginOverlay').style.display = 'flex';
+      setTimeout(() => document.getElementById('loginPw').focus(), 50);
+    }
+  }
+
+  async function doLogin() {
+    const pw = document.getElementById('loginPw').value;
+    if ((await hash(pw)) === localStorage.getItem('pw_hash')) {
+      loginSuccess(true);
+    } else {
+      document.getElementById('loginErr').textContent = 'wrong password, try again ✕';
+      document.getElementById('loginPw').value = '';
+      document.getElementById('loginPw').focus();
+    }
+  }
+
+  function loginSuccess(saveSession) {
+    isLoggedIn = true;
+    if (saveSession) sessionStorage.setItem('pw_session', 'active');
+    document.getElementById('loginOverlay').style.display = 'none';
+    applyAdminState();
+    applyProfile();
+    renderEntries();
+  }
+
+  function enterAsVisitor() {
+    isLoggedIn = false;
+    document.getElementById('loginOverlay').style.display = 'none';
+    applyAdminState();
+    applyProfile();
+    renderEntries();
+  }
+
+  function showLoginOverlay() {
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginErr').textContent = '';
+    document.getElementById('loginSub').textContent = 'enter your password';
+    document.getElementById('loginBtn').textContent = 'sign in';
+    document.getElementById('loginBtn').onclick = doLogin;
+    document.getElementById('loginOverlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('loginPw').focus(), 50);
+  }
+
+  function doLogout() {
+    isLoggedIn = false;
+    sessionStorage.removeItem('pw_session');
+    applyAdminState();
+    renderEntries();
+  }
+
+  async function changePassword() {
+    const cur = document.getElementById('cpw_cur').value;
+    const nw  = document.getElementById('cpw_new').value;
+    const con = document.getElementById('cpw_con').value;
+    const msg = document.getElementById('changePwMsg');
+    if (await hash(cur) !== localStorage.getItem('pw_hash')) { msg.style.color='#ff6666'; msg.textContent='current password is wrong'; return; }
+    if (nw.length < 4) { msg.style.color='#ff6666'; msg.textContent='new password too short'; return; }
+    if (nw !== con) { msg.style.color='#ff6666'; msg.textContent="passwords don't match"; return; }
+    localStorage.setItem('pw_hash', await hash(nw));
+    msg.style.color='var(--xcyan)'; msg.textContent='password updated ✓';
+    ['cpw_cur','cpw_new','cpw_con'].forEach(id => document.getElementById(id).value='');
+    setTimeout(() => { msg.textContent=''; document.getElementById('changePwBox').classList.remove('open'); }, 2000);
+  }
+
+  // ── admin UI ─────────────────────────────────────────────────
+  function applyAdminState() {
+    const br = document.getElementById('bannerRight');
+    if (isLoggedIn) {
+      br.innerHTML = '<span style="background:var(--xpink);color:#fff;font-size:9px;padding:2px 7px;letter-spacing:0.5px;">admin</span><button onclick="doLogout()" style="color:var(--xmuted);font-size:10px;cursor:pointer;background:none;border:1px solid rgba(204,0,255,0.3);padding:3px 8px;margin-top:4px;" onmouseover="this.style.color=\'var(--xpink)\';this.style.borderColor=\'var(--xpink)\'" onmouseout="this.style.color=\'var(--xmuted)\';this.style.borderColor=\'rgba(204,0,255,0.3)\'">sign out</button>';
+    } else {
+      br.innerHTML = '<button onclick="showLoginOverlay()" style="color:var(--xmuted);font-size:10px;cursor:pointer;background:none;border:1px solid rgba(204,0,255,0.3);padding:3px 8px;" onmouseover="this.style.color=\'var(--xpink)\';this.style.borderColor=\'var(--xpink)\'" onmouseout="this.style.color=\'var(--xmuted)\';this.style.borderColor=\'rgba(204,0,255,0.3)\'">sign in</button>';
+    }
+
+    // new entry button
+    document.getElementById('newEntryBtn').style.display = isLoggedIn ? 'block' : 'none';
+    // edit profile / change pw links
+    document.getElementById('editProfileLink').style.display = isLoggedIn ? 'block' : 'none';
+    document.getElementById('changePwLink').style.display = isLoggedIn ? 'block' : 'none';
+    // audio upload
+    document.getElementById('audioUploadBtn').style.display = isLoggedIn ? 'block' : 'none';
+    // avatar click
+    const av = document.getElementById('avatarEl');
+    if (isLoggedIn) { av.classList.add('editable'); av.onclick = () => document.getElementById('avatarInput').click(); av.title='click to change photo'; }
+    else { av.classList.remove('editable'); av.onclick = null; av.title=''; }
+    // close edit forms on logout
+    if (!isLoggedIn) {
+      document.getElementById('profileEditForm').classList.remove('open');
+      document.getElementById('changePwBox').classList.remove('open');
+      document.getElementById('composeBox').classList.remove('open');
+    }
+  }
+
+  // ── profile ───────────────────────────────────────────────────
+  function applyProfile() {
+    document.getElementById('siteName').textContent = profile.siteName;
+    document.getElementById('siteSubtitle').textContent = profile.subtitle;
+    document.getElementById('marqueeText').textContent = profile.marquee;
+    document.getElementById('profileName').textContent = profile.name;
+    document.getElementById('profileLoc').textContent = profile.loc;
+    document.getElementById('moodText').textContent = profile.mood;
+    document.getElementById('moodEmoji').textContent = profile.moodEmoji;
+    document.getElementById('musicText').textContent = profile.music;
+    document.getElementById('aboutText').textContent = profile.about;
+    document.getElementById('heartsGivenCount').textContent = profile.heartsGiven;
+    document.getElementById('totalEntries').textContent = posts.length;
+    if (profile.avatarSrc) {
+      document.getElementById('avatarEmoji').style.display = 'none';
+      const img = document.getElementById('avatarImg'); img.src=profile.avatarSrc; img.style.display='block';
+    }
+  }
+
+  function saveProfileData() { localStorage.setItem('pw_profile', JSON.stringify(profile)); }
+  function savePosts() { localStorage.setItem('pw_posts', JSON.stringify(posts)); document.getElementById('totalEntries').textContent = posts.length; }
+
+  function toggleProfileEdit() {
+    const f = document.getElementById('profileEditForm'); f.classList.toggle('open');
+    if (f.classList.contains('open')) {
+      document.getElementById('pe_name').value = profile.name;
+      document.getElementById('pe_loc').value = profile.loc;
+      document.getElementById('pe_sitename').value = profile.siteName;
+      document.getElementById('pe_subtitle').value = profile.subtitle;
+      document.getElementById('pe_marquee').value = profile.marquee;
+      document.getElementById('pe_mood').value = profile.mood;
+      document.getElementById('pe_moodEmoji').value = profile.moodEmoji;
+      document.getElementById('pe_music').value = profile.music;
+      document.getElementById('pe_about').value = profile.about;
+    }
+  }
+
+  function saveProfile() {
+    [['name','pe_name'],['loc','pe_loc'],['siteName','pe_sitename'],['subtitle','pe_subtitle'],
+     ['marquee','pe_marquee'],['mood','pe_mood'],['moodEmoji','pe_moodEmoji'],['music','pe_music'],['about','pe_about']
+    ].forEach(([k,id]) => { const v=document.getElementById(id).value; if(v) profile[k]=v; });
+    saveProfileData(); applyProfile(); document.getElementById('profileEditForm').classList.remove('open');
+  }
+
+  function toggleChangePw() { document.getElementById('changePwBox').classList.toggle('open'); }
+
+  // ── entries ───────────────────────────────────────────────────
+  function toggleCompose() { if(!isLoggedIn) return; document.getElementById('composeBox').classList.toggle('open'); }
+
+  function formatDate(ts) {
+    const d=new Date(ts), months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} @ ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+  }
+
+  function postEntry() {
+    if (!isLoggedIn) return;
+    const body = document.getElementById('entryBody').value.trim(); if(!body) return;
+    const mood = document.getElementById('entryMood').value;
+    const music = document.getElementById('entryMusic').value.trim();
+    const images = [...pendingImages];
+    const links = [...document.querySelectorAll('.link-input')].map(i=>i.value.trim()).filter(Boolean).map(l=>l.startsWith('http')?l:'https://'+l);
+    posts.unshift({ id:Date.now(), title:document.getElementById('entryTitle').value.trim()||'untitled', body,
+      mood, music, images, links, ts:Date.now(), hearts:0, heartsGiven:false, comments:[] });
+    // sync status sidebar
+    const moodParts = mood.split(' ');
+    profile.moodEmoji = moodParts[0];
+    profile.mood = moodParts.slice(1).join(' ');
+    if (music) profile.music = music;
+    saveProfileData();
+    document.getElementById('entryTitle').value=''; document.getElementById('entryBody').value=''; document.getElementById('entryMusic').value='';
+    document.getElementById('imgPreviewWrap').innerHTML=''; document.getElementById('linkFields').innerHTML='';
+    pendingImages=[];
+    document.getElementById('composeBox').classList.remove('open');
+    savePosts(); applyProfile(); renderEntries();
+  }
+
+  function giveHeart(id) {
+    const p=posts.find(p=>p.id===id); if(!p) return;
+    if(p.heartsGiven){p.hearts=Math.max(0,(p.hearts||0)-1);p.heartsGiven=false;profile.heartsGiven=Math.max(0,profile.heartsGiven-1);}
+    else{p.hearts=(p.hearts||0)+1;p.heartsGiven=true;profile.heartsGiven++;}
+    savePosts(); saveProfileData(); renderEntries(); applyProfile();
+  }
+
+  function deletePost(id) {
+    if(!isLoggedIn) return;
+    if(!confirm('delete this entry?')) return;
+    posts=posts.filter(p=>p.id!==id); savePosts(); renderEntries();
+  }
+
+  function toggleComments(id) { commentStates[id]=!commentStates[id]; renderEntries(); }
+
+  function addComment(id) {
+    const author=document.getElementById('cname_'+id).value.trim()||'anonymous';
+    const text=document.getElementById('ctext_'+id).value.trim(); if(!text) return;
+    const p=posts.find(p=>p.id===id); if(!p) return;
+    if(!p.comments) p.comments=[];
+    p.comments.push({author,text,ts:Date.now()}); commentStates[id]=true;
+    savePosts(); renderEntries();
+  }
+
+  function esc(s) { return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''; }
+
+  function renderBody(text) {
+    const escaped = esc(text);
+    return escaped.replace(/(https?:\/\/[^\s&]+)/g, '<a href="$1" target="_blank" rel="noopener" class="entry-link" style="display:inline;padding:0;margin:0;" onclick="event.stopPropagation()">$1</a>');
+  }
+
+  function openLightbox(src) {
+    const lb = document.createElement('div');
+    lb.className = 'lightbox';
+    lb.innerHTML = `<img src="${src}">`;
+    lb.onclick = () => lb.remove();
+    document.body.appendChild(lb);
+  }
+
+  function renderEntries() {
+    const list=document.getElementById('entriesList');
+    if(!posts.length){list.innerHTML='<div class="empty-state">no entries yet... write your first post! ✨</div>';return;}
+    list.innerHTML=posts.map(post=>{
+      const open=commentStates[post.id], cc=(post.comments||[]).length;
+      const ch=(post.comments||[]).map(c=>`<div class="comment-item"><span class="comment-author">${esc(c.author)}</span><span class="comment-time"> — ${formatDate(c.ts)}</span><div class="comment-text">${esc(c.text)}</div></div>`).join('');
+      const del=isLoggedIn?`<button class="delete-btn" onclick="deletePost(${post.id})">✕ delete</button>`:'';
+      const imgs=(post.images||[]).length?`<div class="entry-images">${(post.images||[]).map(src=>`<img class="entry-img" src="${src}" onclick="openLightbox('${src}')" title="click to enlarge">`).join('')}</div>`:'';
+      const lnks=(post.links||[]).length?`<div class="entry-links">${(post.links||[]).map(l=>`<a class="entry-link" href="${esc(l)}" target="_blank" rel="noopener">${esc(l)}</a>`).join('')}</div>`:'';
+      return `<div class="entry" id="entry_${post.id}">
+        <div class="entry-hdr"><span class="entry-title">${esc(post.title)}</span><span class="entry-date">${formatDate(post.ts)}</span></div>
+        <div class="entry-body">${renderBody(post.body)}</div>
+        ${imgs}${lnks}
+        <div class="entry-meta">
+          <span class="meta-item">mood: <span class="val">${esc(post.mood)}</span></span>
+          ${post.music?`<span class="meta-item">♫ <span class="val">${esc(post.music)}</span></span>`:''}
+        </div>
+        <div class="entry-footer">
+          <button class="heart-btn ${post.heartsGiven?'given':''}" onclick="giveHeart(${post.id})"><span class="heart-icon">${post.heartsGiven?'❤️':'🤍'}</span></button>
+          <span class="heart-count">${post.hearts||0}</span>
+          <button class="comment-toggle" onclick="toggleComments(${post.id})">comments (${cc}) ${open?'▲':'▼'}</button>
+          ${del}
+        </div>
+        <div class="comments-section ${open?'open':''}" id="comments_${post.id}">
+          ${cc===0?'<div class="no-comments">no comments yet</div>':ch}
+          <div class="comment-form">
+            <input id="cname_${post.id}" placeholder="your name" />
+            <textarea id="ctext_${post.id}" placeholder="leave a comment..."></textarea>
+            <button class="comment-submit" onclick="addComment(${post.id})">post comment</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── image + link compose helpers ──────────────────────────────
+  let pendingImages = [];
+
+  function handleEntryImages(e) {
+    const files = [...e.target.files];
+    const wrap = document.getElementById('imgPreviewWrap');
+    files.forEach(file => {
+      const r = new FileReader();
+      r.onload = ev => {
+        const src = ev.target.result;
+        pendingImages.push(src);
+        const idx = pendingImages.length - 1;
+        const div = document.createElement('div');
+        div.className = 'img-preview';
+        div.id = 'prev_' + idx;
+        div.innerHTML = `<img src="${src}"><button class="img-preview-rm" onclick="removeImg(${idx})">✕</button>`;
+        wrap.appendChild(div);
+      };
+      r.readAsDataURL(file);
+    });
+    e.target.value = '';
+  }
+
+  function removeImg(idx) {
+    pendingImages[idx] = null;
+    const el = document.getElementById('prev_' + idx);
+    if (el) el.remove();
+  }
+
+  function addLinkField() {
+    const container = document.getElementById('linkFields');
+    const id = 'lf_' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'link-row';
+    div.id = id;
+    div.innerHTML = `<input class="link-input" placeholder="https://..." /><button class="link-rm" onclick="document.getElementById('${id}').remove()">✕</button>`;
+    container.appendChild(div);
+    div.querySelector('input').focus();
+  }
+
+  // ── media ─────────────────────────────────────────────────────
+  function handleAvatarChange(e) {
+    if(!isLoggedIn) return; const file=e.target.files[0]; if(!file) return;
+    const r=new FileReader(); r.onload=ev=>{
+      profile.avatarSrc=ev.target.result;
+      document.getElementById('avatarEmoji').style.display='none';
+      const img=document.getElementById('avatarImg'); img.src=profile.avatarSrc; img.style.display='block';
+      saveProfileData();
+    }; r.readAsDataURL(file);
+  }
+
+  function handleAudioUpload(e) {
+    if(!isLoggedIn) return; const file=e.target.files[0]; if(!file) return;
+    const audio=document.getElementById('sidebarAudio');
+    audio.src=URL.createObjectURL(file); audio.style.display='block';
+    const nameEl=document.getElementById('nowPlayingName');
+    const name=file.name.replace(/\.[^.]+$/,''); nameEl.textContent=name; nameEl.style.display='block';
+    profile.music=name; document.getElementById('musicText').textContent=name;
+    saveProfileData(); audio.play();
+  }
+
+  // ── glitter ───────────────────────────────────────────────────
+  (function(){
+    const c=document.getElementById('glitter'),ctx=c.getContext('2d');
+    let W,H,ps=[];
+    const COLS=['#ff33cc','#cc00ff','#ff66ff','#00ffee','#ffffff','#ffccff','#ff99ee','#cc66ff'];
+    const resize=()=>{W=c.width=innerWidth;H=c.height=innerHeight;};
+    const rand=(a,b)=>a+Math.random()*(b-a);
+    function P(){
+      this.r=function(){
+        this.x=rand(0,W);this.y=rand(-20,-5);this.sz=rand(2,5);
+        this.vy=rand(0.8,2.2);this.vx=rand(-0.4,0.4);
+        this.col=COLS[0|Math.random()*COLS.length];
+        this.a=rand(0.5,1);this.tw=rand(0.01,0.04);this.td=1;
+        this.star=Math.random()>.5;this.rot=rand(0,Math.PI*2);this.rs=rand(-0.05,0.05);
+      };this.r();this.y=rand(0,H);
+    }
+    function star(cx,cy,r,rot){
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);ctx.beginPath();
+      for(let i=0;i<5;i++){const a=(i*4*Math.PI)/5-Math.PI/2,b=a+(2*Math.PI)/5;
+        ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);ctx.lineTo(Math.cos(b)*(r*.45),Math.sin(b)*(r*.45));}
+      ctx.closePath();ctx.fill();ctx.restore();
+    }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ps.forEach(p=>{
+        p.y+=p.vy;p.x+=p.vx;p.rot+=p.rs;p.a+=p.tw*p.td;
+        if(p.a>=1)p.td=-1;if(p.a<=.3)p.td=1;if(p.y>H+10)p.r();
+        ctx.globalAlpha=p.a;ctx.fillStyle=p.col;
+        p.star?star(p.x,p.y,p.sz,p.rot):(ctx.beginPath(),ctx.arc(p.x,p.y,p.sz/2,0,Math.PI*2),ctx.fill());
+      });
+      ctx.globalAlpha=1;requestAnimationFrame(draw);
+    }
+    resize();addEventListener('resize',resize);
+    for(let i=0;i<80;i++){const p=new P();ps.push(p);}
+    draw();
+  })();
+
+  initAuth();
+</script>
+</body>
+</html>
